@@ -37,38 +37,46 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, limits:{ fileSize:5*1024*1024 }});
 
 /* ══════════════════════════════════════════════════
-   IN-MEMORY DATABASE
-══════════════════════════════════════════════════ */
-let db = {
+   FILE-BASED DATABASE (persists across restarts)
+   ══════════════════════════════════════════════════ */
+const DB_FILE = path.join(__dirname, 'db.json');
+
+const DEFAULT_DB = {
   users: [
     { id:'admin-001', name:'Admin', email:'sasa@sasaboutique.com',
       password: bcrypt.hashSync('sasab1992',10), role:'admin',
       avatar:null, createdAt: new Date().toISOString() }
   ],
-
-  /* Dynamic categories — admin can add/edit/delete */
   categories: [
     { id:'clothes',    nameEn:'Clothes',    nameAr:'الملابس',    image:'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&q=80', types:['Dress','Blouse','Skirt','Abaya','Jacket','Pants','Top'], order:1 },
-    { id:'shoes',      nameEn:'Shoes',      nameAr:'الأحذية',    image:'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=600&q=80', types:['Heels','Sneakers','Flats','Boots','Sandals','Loafers'], order:2 },
+    { id:'shoes',      nameEn:'Shoes',      nameAr:'أحذية',      image:'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=600&q=80', types:['Heels','Sneakers','Flats','Boots','Sandals','Loafers'], order:2 },
     { id:'bags',       nameEn:'Bags',       nameAr:'الحقائب',    image:'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&q=80', types:['Crossbody','Tote','Clutch','Backpack','Shoulder Bag','Mini Bag'], order:3 },
     { id:'foundation', nameEn:'Beauty',     nameAr:'التجميل',    image:'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&q=80', types:['Foundation','Blush','BB Cream','Concealer','Primer','Setting Powder'], order:4 },
     { id:'other',      nameEn:'Lifestyle',  nameAr:'الإكسسوارات',image:'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80', types:['Accessories','Electronics','Fragrance','Home','Sports'], order:5 },
   ],
-
-  products: [
-    { id:uuidv4(), name:'Pink Heeled Sandals',    category:'shoes',      type:'Heels',       price:65000,  originalPrice:80000,  quantity:12, sizes:['36','37','38','39','40','41'],  colors:['Pink'],                image:null, description:'Stunning pink heeled sandals.',            featured:true,  createdAt:new Date().toISOString() },
-    { id:uuidv4(), name:'White Sneakers',         category:'shoes',      type:'Sneakers',    price:55000,  originalPrice:null,   quantity:25, sizes:['36','37','38','39','40','41','42'], colors:['White'],           image:null, description:'Comfortable and trendy white sneakers.',   featured:false, createdAt:new Date().toISOString() },
-    { id:uuidv4(), name:'Ballet Flats Rose',      category:'shoes',      type:'Flats',       price:40000,  originalPrice:50000,  quantity:18, sizes:['35','36','37','38','39','40'],  colors:['Rose','Nude'],         image:null, description:'Comfortable ballet flats.',                featured:true,  createdAt:new Date().toISOString() },
-    { id:uuidv4(), name:'Glow Foundation SPF 30', category:'foundation', type:'Foundation',  price:45000,  originalPrice:null,   quantity:30, sizes:[],                              colors:['Ivory','Beige','Sand','Medium'], image:null, description:'Full-coverage foundation with SPF 30.', featured:true, createdAt:new Date().toISOString() },
-    { id:uuidv4(), name:'Rose Blush Palette',     category:'foundation', type:'Blush',       price:30000,  originalPrice:38000,  quantity:20, sizes:[],                              colors:['Rose','Peach'],        image:null, description:'Gorgeous blush palette with 6 shades.',    featured:true,  createdAt:new Date().toISOString() },
-    { id:uuidv4(), name:'Hydrating BB Cream',     category:'foundation', type:'BB Cream',    price:28000,  originalPrice:null,   quantity:25, sizes:[],                              colors:['Light','Medium','Dark'], image:null, description:'Lightweight BB cream with hydrating formula.', featured:false, createdAt:new Date().toISOString() },
-    { id:uuidv4(), name:'Rose Gold Water Bottle', category:'other',      type:'Accessories', price:22000,  originalPrice:null,   quantity:40, sizes:[],                              colors:['Rose Gold'],           image:null, description:'Stylish insulated water bottle.',          featured:false, createdAt:new Date().toISOString() },
-    { id:uuidv4(), name:'Wireless Earbuds Pink',  category:'other',      type:'Electronics', price:85000,  originalPrice:100000, quantity:15, sizes:[],                              colors:['Pink','White'],        image:null, description:'Premium wireless earbuds.',                featured:true,  createdAt:new Date().toISOString() },
-    { id:uuidv4(), name:'Perfume - Bloom',        category:'other',      type:'Fragrance',   price:55000,  originalPrice:null,   quantity:12, sizes:['30ml','50ml','100ml'],         colors:[],                      image:null, description:'Feminine floral fragrance.',               featured:true,  createdAt:new Date().toISOString() },
-  ],
+  products: [],
   orders: [],
-  pendingPayments: {},   // orderId -> { order, expiresAt }
+  pendingPayments: {},
 };
+
+function loadDb() {
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const raw = fs.readFileSync(DB_FILE, 'utf8');
+      const saved = JSON.parse(raw);
+      return { ...DEFAULT_DB, ...saved };
+    }
+  } catch (e) { console.error('Failed to load db:', e); }
+  return { ...DEFAULT_DB };
+}
+
+function saveDb() {
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
+  } catch (e) { console.error('Failed to save db:', e); }
+}
+
+let db = loadDb();
 
 const PUBLIC_URL = process.env.PUBLIC_URL || '';
 
@@ -102,6 +110,7 @@ app.post('/api/auth/register', async (req,res) => {
   const hashed = await bcrypt.hash(password,10);
   const user = { id:uuidv4(), name, email, password:hashed, role:'customer', avatar:null, createdAt:new Date().toISOString() };
   db.users.push(user);
+  saveDb();
   const token = jwt.sign({ id:user.id, email, role:'customer', name }, JWT_SECRET, { expiresIn:'7d' });
   res.json({ token, user:{ id:user.id, name, email, role:'customer', avatar:null } });
 });
@@ -129,6 +138,7 @@ app.put('/api/auth/profile', auth, upload.single('avatar'), async (req,res) => {
   if (req.file) db.users[idx].avatar = `/uploads/${req.file.filename}`;
   const u = db.users[idx];
   const token = jwt.sign({ id:u.id, email:u.email, role:u.role, name:u.name }, JWT_SECRET, { expiresIn:'7d' });
+  saveDb();
   res.json({ token, user:{ id:u.id, name:u.name, email:u.email, role:u.role, avatar:u.avatar } });
 });
 
@@ -151,6 +161,7 @@ app.post('/api/categories', auth, adminOnly, upload.single('image'), (req,res) =
     order: order ? Number(order) : db.categories.length+1,
   };
   db.categories.push(cat);
+  saveDb();
   res.status(201).json(cat);
 });
 
@@ -163,6 +174,7 @@ app.put('/api/categories/:id', auth, adminOnly, upload.single('image'), (req,res
   if (types)  db.categories[idx].types  = JSON.parse(types);
   if (order)  db.categories[idx].order  = Number(order);
   if (req.file) db.categories[idx].image = `/uploads/${req.file.filename}`;
+  saveDb();
   res.json(db.categories[idx]);
 });
 
@@ -170,6 +182,7 @@ app.delete('/api/categories/:id', auth, adminOnly, (req,res) => {
   const idx = db.categories.findIndex(c=>c.id===req.params.id);
   if (idx===-1) return res.status(404).json({ error:'Not found' });
   db.categories.splice(idx,1);
+  saveDb();
   res.json({ message:'Deleted' });
 });
 
@@ -210,6 +223,7 @@ app.post('/api/products', auth, adminOnly, upload.single('image'), (req,res) => 
     createdAt:new Date().toISOString()
   };
   db.products.push(product);
+  saveDb();
   res.status(201).json({ ...product, image: resolveImage(product.image, req) });
 });
 
@@ -230,6 +244,7 @@ app.put('/api/products/:id', auth, adminOnly, upload.single('image'), (req,res) 
     featured: featured==='true',
     ...(req.file&&{image:`/uploads/${req.file.filename}`}),
   };
+  saveDb();
   res.json({ ...db.products[idx], image: resolveImage(db.products[idx].image, req) });
 });
 
@@ -237,6 +252,7 @@ app.delete('/api/products/:id', auth, adminOnly, (req,res) => {
   const idx = db.products.findIndex(p=>p.id===req.params.id);
   if (idx===-1) return res.status(404).json({ error:'Not found' });
   db.products.splice(idx,1);
+  saveDb();
   res.json({ message:'Deleted' });
 });
 
@@ -267,6 +283,8 @@ app.post('/api/payment/init', async (req,res) => {
     expiresAt,
     createdAt: new Date().toISOString(),
   };
+
+  saveDb();
 
   // Return method-specific instructions
   if (method === 'qi_card') {
@@ -350,6 +368,7 @@ async function createOrderFromPending(pendingId, paymentStatus) {
   };
   db.orders.push(order);
   delete db.pendingPayments[pendingId];
+  saveDb();
   return order;
 }
 
@@ -376,6 +395,7 @@ app.put('/api/orders/:id/status', auth, adminOnly, (req,res) => {
   if (status) db.orders[idx].status = status;
   if (paymentStatus) db.orders[idx].paymentStatus = paymentStatus;
   db.orders[idx].updatedAt = new Date().toISOString();
+  saveDb();
   res.json(db.orders[idx]);
 });
 
