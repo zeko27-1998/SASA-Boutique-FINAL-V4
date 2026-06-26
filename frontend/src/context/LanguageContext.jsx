@@ -144,7 +144,7 @@ const translations = {
     auth_have_account: 'لديكِ حساب بالفعل؟',
     auth_register_link: 'سجلي',
     auth_signin_link: 'سجلي الدخول',
-    auth_admin_hint: 'حساب الإدارة: admin@sasaboutique.com / admin123',
+    auth_admin_hint: 'حساب الإدارة: sasa@sasaboutique.com / sasab1992',
     auth_tagline: 'وجهتكِ للأزياء في العراق — مختارة بأناقة للمرأة العصرية.',
 
     // Footer
@@ -377,7 +377,7 @@ const translations = {
     auth_have_account: 'Already have an account?',
     auth_register_link: 'Register',
     auth_signin_link: 'Sign In',
-    auth_admin_hint: 'Admin demo: admin@sasaboutique.com / admin123',
+    auth_admin_hint: 'Admin demo: sasa@sasaboutique.com / sasab1992',
     auth_tagline: 'Your fashion destination in Iraq — curated with elegance for the modern woman.',
 
     footer_shop: 'Shop',

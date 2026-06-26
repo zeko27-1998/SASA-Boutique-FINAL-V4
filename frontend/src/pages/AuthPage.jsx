@@ -135,13 +135,6 @@ export default function AuthPage() {
               </button>
             </form>
 
-            {/* Admin hint */}
-            {mode === 'login' && (
-              <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200">
-                <p className="text-xs text-amber-700 text-center font-medium">{t('auth_admin_hint')}</p>
-              </div>
-            )}
-
             <p className="text-center text-sm text-gray-400 mt-5">
               {mode === 'login' ? t('auth_no_account') : t('auth_have_account')}{' '}
               <button onClick={() => setMode(mode === 'login' ? 'register' : 'login')}

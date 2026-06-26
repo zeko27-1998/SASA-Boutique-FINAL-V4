@@ -30,7 +30,7 @@ Open your browser at **http://localhost:3000** 🎉
 ## 🔑 Admin Login
 | Email                        | Password  |
 |------------------------------|-----------|
-| admin@sasaboutique.com       | admin123  |
+| sasa@sasaboutique.com         | sasab1992  |
 
 Admin panel → http://localhost:3000/admin
 

@@ -39,8 +39,8 @@ const upload = multer({ storage, limits:{ fileSize:5*1024*1024 }});
 ══════════════════════════════════════════════════ */
 let db = {
   users: [
-    { id:'admin-001', name:'Admin', email:'admin@sasaboutique.com',
-      password: bcrypt.hashSync('admin123',10), role:'admin',
+    { id:'admin-001', name:'Admin', email:'sasa@sasaboutique.com',
+      password: bcrypt.hashSync('sasab1992',10), role:'admin',
       avatar:null, createdAt: new Date().toISOString() }
   ],
 
