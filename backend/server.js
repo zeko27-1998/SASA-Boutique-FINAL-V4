@@ -39,7 +39,14 @@ const upload = multer({ storage, limits:{ fileSize:5*1024*1024 }});
 /* ══════════════════════════════════════════════════
    FILE-BASED DATABASE (persists across restarts)
    ══════════════════════════════════════════════════ */
-const DB_FILE = path.join(__dirname, 'db.json');
+const DB_FILE = path.join(
+  process.env.RAILWAY_VOLUME_MOUNT_PATH || '/app/data',
+  'db.json'
+);
+
+if (!fs.existsSync(path.dirname(DB_FILE))) {
+  fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
+}
 
 const DEFAULT_DB = {
   users: [
@@ -333,23 +340,23 @@ app.post('/api/orders/direct', async (req,res) => {
 function buildWhatsAppUrl(customerPhone, order) {
   const ADMIN_PHONE = '9647733440545';
   const lines = [
-    `*New Order: ${order.id}*`,
-    `Customer: ${order.customer.name}`,
-    `Phone: ${order.customer.phone}`,
-    `Email: ${order.customer.email || 'N/A'}`,
-    `Address: ${order.deliveryAddress}`,
+    `*طلب جديد: ${order.id}*`,
+    `العميل: ${order.customer.name}`,
+    `الهاتف: ${order.customer.phone}`,
+    `البريد: ${order.customer.email || 'غير متوفر'}`,
+    `العنوان: ${order.deliveryAddress}`,
     ``,
-    `Items:`,
+    `المنتجات:`,
     ...order.items.map((item,i) => {
       const p = db.products.find(pr=>pr.id===item.productId);
-      return `${i+1}. ${item.name} ×${item.quantity} = ${((p?.price||0)*item.quantity).toLocaleString()} IQD`;
+      return `${i+1}. ${item.name} ×${item.quantity} = ${((p?.price||0)*item.quantity).toLocaleString()} دينار`;
     }),
     ``,
-    `Subtotal: ${order.subtotal?.toLocaleString()} IQD`,
-    `Delivery: ${order.deliveryFee===0 ? 'FREE' : order.deliveryFee.toLocaleString()+' IQD'}`,
-    `Total: ${order.total?.toLocaleString()} IQD`,
+    `المجموع الفرعي: ${order.subtotal?.toLocaleString()} دينار`,
+    `رسوم التوصيل: ${order.deliveryFee===0 ? 'مجاني' : order.deliveryFee.toLocaleString()+' دينار'}`,
+    `الإجمالي: ${order.total?.toLocaleString()} دينار`,
     ``,
-    `Please confirm availability and delivery time.`,
+    `يرجى تأكيد التوفر وموعد التوصيل.`,
   ];
 
   const text = encodeURIComponent(lines.join('\n'));
