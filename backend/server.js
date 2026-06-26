@@ -269,61 +269,17 @@ app.post('/api/payment/init', async (req,res) => {
   };
 
   // Return method-specific instructions
-  if (method === 'zain_cash') {
-    /* LIVE integration:
-       1. POST https://api.zaincash.iq/transaction/init with JWT payload
-       2. Get back redirectUrl -> send to frontend -> user pays
-       3. ZainCash POSTs to your webhook URL on success
-       Credentials needed from ZainCash business team:
-       ZAINCASH_MERCHANT_ID, ZAINCASH_SECRET, ZAINCASH_MSISDN
-    */
-    return res.json({
-      pendingId,
-      method,
-      expiresAt,
-      // In test mode — in production this would be the real ZainCash redirect URL
-      redirectUrl: null,
-      walletInstructions: {
-        merchantName: 'SASA Boutique',
-        amount,
-        referenceId: pendingId,
-        phone: process.env.ZAINCASH_MERCHANT_PHONE || '07835077893',
-        steps_ar: [
-          'افتح تطبيق زين كاش',
-          'اختر تحويل مبلغ',
-          `أدخل رقم المحفظة: ${process.env.ZAINCASH_MERCHANT_PHONE || '07835077893'}`,
-          `أدخل المبلغ: ${amount.toLocaleString()} دينار`,
-          `اكتب رقم الطلب في الملاحظات: ${pendingId}`,
-          'أرسل الحوالة وانتظر التأكيد',
-        ],
-        steps_en: [
-          'Open ZainCash app',
-          'Choose Transfer',
-          `Enter wallet number: ${process.env.ZAINCASH_MERCHANT_PHONE || '07835077893'}`,
-          `Enter amount: ${amount.toLocaleString()} IQD`,
-          `Write order reference in notes: ${pendingId}`,
-          'Send and wait for confirmation',
-        ],
-      },
-    });
-  }
-
   if (method === 'qi_card') {
     return res.json({
       pendingId, method, expiresAt, redirectUrl: null,
       cardInstructions: {
         merchantName: 'SASA Boutique',
         amount, referenceId: pendingId,
-        note_ar: 'قم بالدفع من خلال جهاز QiCard أو التطبيق باستخدام رقم المرجع أعلاه.',
-        note_en: 'Pay via QiCard device or app using the reference number above.',
+        accountNumber: '7165704789',
+        accountName: 'SASA Boutique',
+        note_ar: `قم بتحويل المبلغ إلى حسابنا: ${'7165704789'} ثم أدخل رقم الحوالة أدناه للتأكيد.`,
+        note_en: `Transfer the amount to our account: ${'7165704789'}, then enter the transfer reference below to confirm.`,
       },
-    });
-  }
-
-  if (method === 'mastercard') {
-    return res.json({
-      pendingId, method, expiresAt, redirectUrl: null,
-      note: 'Card payment — verify card details then confirm.',
     });
   }
 
@@ -347,13 +303,7 @@ app.post('/api/payment/confirm', async (req,res) => {
     return res.status(400).json({ error:'Payment already processed' });
 
   // Validate based on method
-  if (pending.method === 'mastercard' || pending.method === 'qi_card') {
-    if (!cardDetails?.number || cardDetails.number.replace(/\s/g,'').length < 12)
-      return res.status(400).json({ error:'Invalid card number' });
-    if (!cardDetails?.expiry) return res.status(400).json({ error:'Expiry required' });
-    if (!cardDetails?.cvv)    return res.status(400).json({ error:'CVV required' });
-  }
-  if (pending.method === 'zain_cash') {
+  if (pending.method === 'qi_card') {
     if (!transferRef || transferRef.trim().length < 3)
       return res.status(400).json({ error:'Transfer reference number required' });
   }
@@ -402,15 +352,6 @@ async function createOrderFromPending(pendingId, paymentStatus) {
   delete db.pendingPayments[pendingId];
   return order;
 }
-
-/* ZainCash webhook (for live integration) */
-app.post('/api/payment/webhook/zaincash', (req,res) => {
-  const { pendingId, status, transactionId } = req.body;
-  if (status === 'success' && pendingId && db.pendingPayments[pendingId]) {
-    createOrderFromPending(pendingId, 'paid').catch(console.error);
-  }
-  res.json({ received: true });
-});
 
 /* ══════════════════════════════════════════════════
    ORDER ROUTES

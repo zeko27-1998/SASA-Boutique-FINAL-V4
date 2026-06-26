@@ -7,10 +7,8 @@ import { initPayment, confirmPayment } from '../api';
 import toast from 'react-hot-toast';
 
 const PAYMENT_METHODS = (isRTL) => [
-  { id:'mastercard',  icon:'💳', labelAr:'ماستركارد / فيزا',      labelEn:'Mastercard / Visa',     descAr:'ادفعي ببطاقة الائتمان',         descEn:'Pay with credit/debit card' },
-  { id:'qi_card',     icon:'🏦', labelAr:'كي كارد',               labelEn:'Qi Card',                descAr:'ادفعي باستخدام كي كارد العراقية', descEn:'Pay using Iraqi Qi Card' },
-  { id:'zain_cash',   icon:'📱', labelAr:'زين كاش',               labelEn:'Zain Cash',              descAr:'ادفعي عبر محفظة زين كاش',       descEn:'Pay via Zain Cash wallet' },
-  { id:'delivery',    icon:'🚚', labelAr:'الدفع عند الاستلام',    labelEn:'Cash on Delivery',       descAr:'ادفعي عند وصول طلبكِ',          descEn:'Pay when order arrives' },
+  { id:'qi_card',   icon:'🏦', labelAr:'كي كارد',           labelEn:'Qi Card',  descAr:'ادفعي إلى حسابنا في كي كارد',     descEn:'Pay to our Qi Card account' },
+  { id:'delivery',  icon:'🚚', labelAr:'الدفع عند الاستلام', labelEn:'Cash on Delivery', descAr:'ادفعي عند وصول طلبكِ',          descEn:'Pay when order arrives' },
 ];
 
 export default function CheckoutPage() {
@@ -18,16 +16,14 @@ export default function CheckoutPage() {
   const { t, isRTL } = useLang();
   const navigate = useNavigate();
 
-  // step: 1=info, 2=payment method, 3=pay action, 4=success
   const [step, setStep]               = useState(1);
   const [loading, setLoading]         = useState(false);
-  const [selectedMethod, setMethod]   = useState('mastercard');
-  const [cardFields, setCardFields]   = useState({});
-  const [pendingData, setPendingData] = useState(null); // from /payment/init
+  const [selectedMethod, setMethod]   = useState('qi_card');
+  const [pendingData, setPendingData] = useState(null);
   const [transferRef, setTransferRef] = useState('');
   const [copiedRef, setCopiedRef]     = useState(false);
   const [orderId, setOrderId]         = useState('');
-  const [countdown, setCountdown]     = useState(900); // 15 min
+  const [countdown, setCountdown]     = useState(900);
   const [customer, setCustomer]       = useState({ name:'', email:'', phone:'', address:'', city:'' });
 
   const methods = PAYMENT_METHODS(isRTL);
@@ -81,16 +77,13 @@ export default function CheckoutPage() {
   const handleConfirm = async (e) => {
     e.preventDefault();
     if (!pendingData) return;
-    if (selectedMethod==='zain_cash' && !transferRef.trim())
+    if (selectedMethod==='qi_card' && !transferRef.trim())
       return toast.error(isRTL ? 'أدخلي رقم الحوالة' : 'Enter transfer reference number');
-    if ((selectedMethod==='mastercard'||selectedMethod==='qi_card') && (!cardFields.number||!cardFields.expiry||!cardFields.cvv))
-      return toast.error(isRTL ? 'يرجى تعبئة بيانات البطاقة' : 'Please fill card details');
 
     setLoading(true);
     try {
       const { data } = await confirmPayment({
         pendingId: pendingData.pendingId,
-        cardDetails: cardFields,
         transferRef,
       });
       setOrderId(data.orderId);
