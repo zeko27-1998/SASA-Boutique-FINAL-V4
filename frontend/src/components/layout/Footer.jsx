@@ -38,9 +38,7 @@ export default function Footer() {
   ];
 
   const paymentMethods = [
-    { icon: '💳', label: isRTL ? 'ماستركارد' : 'Mastercard' },
     { icon: '🏦', label: isRTL ? 'كي كارد' : 'Qi Card' },
-    { icon: '📱', label: isRTL ? 'زين كاش' : 'Zain Cash' },
     { icon: '🚚', label: isRTL ? 'كاش' : 'Cash on Delivery' },
   ];
 
