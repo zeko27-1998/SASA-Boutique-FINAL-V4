@@ -37,13 +37,12 @@ export const createProduct  = d  => api.post('/products', d);
 export const updateProduct  = (id,d) => api.put(`/products/${id}`, d);
 export const deleteProduct  = id => api.delete(`/products/${id}`);
 
-// Payment (2-step)
-export const initPayment    = d  => api.post('/payment/init', d);
-export const confirmPayment = d  => api.post('/payment/confirm', d);
+// Payment (direct order — WhatsApp)
+export const createDirectOrder = d => api.post('/orders/direct', d);
 
 // Orders
 export const getOrders        = ()       => api.get('/orders');
-export const getOrder         = id       => api.get(`/orders/${id}`);
+export const getOrder         = id => api.get(`/orders/${id}`);
 export const getUserOrders    = email    => api.get('/orders/user', { params: { email } });
 export const updateOrderStatus = (id,d)  => api.put(`/orders/${id}/status`, d);
 

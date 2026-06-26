@@ -257,124 +257,8 @@ app.delete('/api/products/:id', auth, adminOnly, (req,res) => {
 });
 
 /* ══════════════════════════════════════════════════
-   PAYMENT ROUTES  — real ZainCash flow simulation
-   For live: POST to https://api.zaincash.iq/transaction/init with JWT
-══════════════════════════════════════════════════ */
-
-/* Step 1: Init payment — creates pending order, returns redirect/instructions */
-app.post('/api/payment/init', async (req,res) => {
-  const { method, amount, items, customer, deliveryAddress } = req.body;
-  if (!method||!amount||!items||!customer)
-    return res.status(400).json({ error:'Missing fields' });
-
-  // Validate stock first
-  for (const item of items) {
-    const p = db.products.find(p=>p.id===item.productId);
-    if (!p) return res.status(400).json({ error:`Product not found: ${item.productId}` });
-    if (p.quantity < item.quantity) return res.status(400).json({ error:`Not enough stock for ${p.name}` });
-  }
-
-  const pendingId = `PAY-${uuidv4().slice(0,8).toUpperCase()}`;
-  const expiresAt = new Date(Date.now() + 15*60*1000).toISOString(); // 15 min
-
-  db.pendingPayments[pendingId] = {
-    method, amount, items, customer, deliveryAddress,
-    status: 'pending',
-    expiresAt,
-    createdAt: new Date().toISOString(),
-  };
-
-  saveDb();
-
-  // Return method-specific instructions
-  if (method === 'qi_card') {
-    return res.json({
-      pendingId, method, expiresAt, redirectUrl: null,
-      cardInstructions: {
-        merchantName: 'SASA Boutique',
-        amount, referenceId: pendingId,
-        accountNumber: '7165704789',
-        accountName: 'SASA Boutique',
-        note_ar: `قم بتحويل المبلغ إلى حسابنا: ${'7165704789'} ثم أدخل رقم الحوالة أدناه للتأكيد.`,
-        note_en: `Transfer the amount to our account: ${'7165704789'}, then enter the transfer reference below to confirm.`,
-      },
-    });
-  }
-
-  if (method === 'delivery') {
-    // Cash on delivery — no payment needed, create order directly
-    const order = await createOrderFromPending(pendingId, 'cod_confirmed');
-    return res.json({ pendingId, method, orderId: order.id, status:'confirmed' });
-  }
-
-  res.json({ pendingId, method, expiresAt });
-});
-
-/* Step 2: Confirm payment — user submits proof/card details */
-app.post('/api/payment/confirm', async (req,res) => {
-  const { pendingId, cardDetails, transferRef } = req.body;
-  const pending = db.pendingPayments[pendingId];
-  if (!pending) return res.status(404).json({ error:'Payment session not found or expired' });
-  if (new Date() > new Date(pending.expiresAt))
-    return res.status(400).json({ error:'Payment session expired. Please restart checkout.' });
-  if (pending.status !== 'pending')
-    return res.status(400).json({ error:'Payment already processed' });
-
-  // Validate based on method
-  if (pending.method === 'qi_card') {
-    if (!transferRef || transferRef.trim().length < 3)
-      return res.status(400).json({ error:'Transfer reference number required' });
-  }
-
-  // Simulate 1.5s processing delay
-  await new Promise(r => setTimeout(r, 1500));
-
-  // Mark as paid and create order
-  pending.status = 'paid';
-  pending.confirmedAt = new Date().toISOString();
-  pending.transferRef = transferRef;
-
-  try {
-    const order = await createOrderFromPending(pendingId, 'confirmed');
-    res.json({ success:true, orderId:order.id, transactionId:`TXN-${Date.now()}` });
-  } catch(e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-/* Helper — build real order once payment confirmed */
-async function createOrderFromPending(pendingId, paymentStatus) {
-  const p = db.pendingPayments[pendingId];
-  if (!p) throw new Error('Pending payment not found');
-
-  // Deduct stock
-  for (const item of p.items) {
-    const idx = db.products.findIndex(pr=>pr.id===item.productId);
-    if (idx !== -1) db.products[idx].quantity -= item.quantity;
-  }
-
-  const order = {
-    id: `ORD-${Date.now()}`,
-    items: p.items,
-    customer: p.customer,
-    paymentMethod: p.method,
-    paymentStatus,
-    deliveryAddress: p.deliveryAddress,
-    total: p.amount,
-    status: 'processing',
-    pendingId,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  db.orders.push(order);
-  delete db.pendingPayments[pendingId];
-  saveDb();
-  return order;
-}
-
-/* ══════════════════════════════════════════════════
    ORDER ROUTES
-══════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════ */
 app.get('/api/orders', auth, adminOnly, (_,res) =>
   res.json(db.orders.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)))
 );
@@ -398,6 +282,79 @@ app.put('/api/orders/:id/status', auth, adminOnly, (req,res) => {
   saveDb();
   res.json(db.orders[idx]);
 });
+
+/* Direct order creation (no payment) */
+app.post('/api/orders/direct', async (req,res) => {
+  const { items, customer, deliveryAddress } = req.body;
+  if (!items?.length || !customer?.name || !customer?.phone)
+    return res.status(400).json({ error:'Please provide items and contact details' });
+
+  // Validate stock
+  for (const item of items) {
+    const p = db.products.find(p=>p.id===item.productId);
+    if (!p) return res.status(400).json({ error:`Product not found: ${item.productId}` });
+    if (p.quantity < item.quantity) return res.status(400).json({ error:`Not enough stock for ${p.name}` });
+  }
+
+  const total = items.reduce((s,i)=>{
+    const p = db.products.find(pr=>pr.id===i.productId);
+    return s + (p?.price||0) * i.quantity;
+  }, 0);
+  const deliveryFee = total >= 100000 ? 0 : 5000;
+  const orderId = `ORD-${Date.now()}`;
+
+  // Deduct stock
+  for (const item of items) {
+    const idx = db.products.findIndex(pr=>pr.id===item.productId);
+    if (idx !== -1) db.products[idx].quantity -= item.quantity;
+  }
+
+  const order = {
+    id: orderId,
+    items,
+    customer,
+    deliveryAddress,
+    total: total + deliveryFee,
+    subtotal: total,
+    deliveryFee,
+    status: 'pending',
+    paymentMethod: 'whatsapp',
+    paymentStatus: 'pending',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  db.orders.push(order);
+  saveDb();
+
+  res.status(201).json({ ...order, whatsappUrl: buildWhatsAppUrl(customer.phone, order) });
+});
+
+function buildWhatsAppUrl(customerPhone, order) {
+  const ADMIN_PHONE = '9647733440545';
+  const lines = [
+    `*New Order: ${order.id}*`,
+    `Customer: ${order.customer.name}`,
+    `Phone: ${order.customer.phone}`,
+    `Email: ${order.customer.email || 'N/A'}`,
+    `Address: ${order.deliveryAddress}`,
+    ``,
+    `Items:`,
+    ...order.items.map((item,i) => {
+      const p = db.products.find(pr=>pr.id===item.productId);
+      return `${i+1}. ${item.name} ×${item.quantity} = ${((p?.price||0)*item.quantity).toLocaleString()} IQD`;
+    }),
+    ``,
+    `Subtotal: ${order.subtotal?.toLocaleString()} IQD`,
+    `Delivery: ${order.deliveryFee===0 ? 'FREE' : order.deliveryFee.toLocaleString()+' IQD'}`,
+    `Total: ${order.total?.toLocaleString()} IQD`,
+    ``,
+    `Please confirm availability and delivery time.`,
+  ];
+
+  const text = encodeURIComponent(lines.join('\n'));
+  return `https://wa.me/${ADMIN_PHONE}?text=${text}`;
+}
 
 /* ══════════════════════════════════════════════════
    CUSTOMERS & ADMIN STATS
