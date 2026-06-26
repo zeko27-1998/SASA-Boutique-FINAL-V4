@@ -240,77 +240,35 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* ZainCash instructions */}
-              {selectedMethod==='zain_cash' && (
+              {/* Qi Card instructions */}
+              {selectedMethod==='qi_card' && (
                 <div className="card p-6">
                   <div className={`flex items-center gap-3 mb-5 ${isRTL?'flex-row-reverse':''}`}>
-                    <span className="text-3xl">📱</span>
-                    <h3 className="font-display text-xl font-black">{isRTL?'خطوات الدفع بزين كاش':'ZainCash Payment Steps'}</h3>
+                    <span className="text-3xl">🏦</span>
+                    <h3 className="font-display text-xl font-black">{isRTL?'دفع عبر كي كارد':'Qi Card Payment'}</h3>
                   </div>
-                  {/* Reference box */}
-                  <div className={`flex items-center justify-between gap-3 p-4 bg-gray-50 rounded-xl border-2 border-dashed border-pink-200 mb-5 ${isRTL?'flex-row-reverse':''}`}>
-                    <div className={isRTL?'text-right':''}>
-                      <p className="text-xs text-gray-500 font-bold mb-1">{isRTL?'رقم المرجع (ضروري في الملاحظات)':'Reference (required in notes)'}</p>
-                      <p className="font-black text-xl text-pink-600 font-mono tracking-wider">{pendingData.pendingId}</p>
-                    </div>
-                    <button onClick={copyRef} className="icon-btn flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border border-pink-200 text-sm font-bold text-pink-600 hover:bg-pink-50">
-                      {copiedRef ? <CheckCircle className="w-4 h-4 text-green-500"/> : <Copy className="w-4 h-4"/>}
-                      {copiedRef ? (isRTL?'تم النسخ':'Copied!') : (isRTL?'نسخ':'Copy')}
-                    </button>
+                  <div className={`p-4 bg-gray-50 rounded-xl border-2 border-dashed border-pink-200 mb-5 ${isRTL?'flex-row-reverse':''}`}>
+                    <p className="text-xs text-gray-500 font-bold mb-1">{isRTL?'رقم الحساب':'Account Number'}</p>
+                    <p className="font-black text-xl text-pink-600 font-mono tracking-wider">7165704789</p>
+                    <p className="text-xs text-gray-500 font-bold mt-2">{isRTL?'الاسم':'Account Name'}</p>
+                    <p className="font-black text-gray-900">SASA Boutique</p>
                   </div>
-                  {/* Steps */}
-                  <ol className="space-y-3 mb-6">
-                    {(isRTL ? pendingData.walletInstructions?.steps_ar : pendingData.walletInstructions?.steps_en)?.map((step, i)=>(
-                      <li key={i} className={`flex gap-3 ${isRTL?'flex-row-reverse':''}`}>
-                        <div className="w-7 h-7 rounded-full bg-pink-500 text-white flex items-center justify-center text-xs font-black flex-shrink-0">{i+1}</div>
-                        <p className="text-sm font-semibold text-gray-700 mt-0.5">{step}</p>
-                      </li>
-                    ))}
-                  </ol>
-                  {/* Confirm with ref */}
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl mb-5">
+                    <p className="text-sm font-bold text-amber-800">
+                      {isRTL?'قم بتحويل المبلغ إلى الحساب أعلاه عبر تطبيق كي كارد، ثم أدخل رقم الحوالة أدناه للتأكيد.':'Transfer the amount to the account above via Qi Card app, then enter the transfer reference below to confirm.'}
+                    </p>
+                  </div>
                   <form onSubmit={handleConfirm}>
                     <label className="block text-sm font-black text-gray-800 mb-2">
-                      {isRTL?'رقم العملية بعد الإرسال *':'Transaction number after sending *'}
+                      {isRTL?'رقم الحوالة بعد الإرسال *':'Transaction number after sending *'}
                     </label>
                     <input type="text" className="input mb-4" dir="ltr" value={transferRef}
                       onChange={e=>setTransferRef(e.target.value)}
-                      placeholder={isRTL?'مثال: ZC-123456789':'e.g. ZC-123456789'}/>
+                      placeholder={isRTL?'مثال: TXN-123456789':'e.g. TXN-123456789'}/>
                     <button type="submit" disabled={loading||!transferRef.trim()||countdown===0}
                       className="btn-primary w-full py-4 flex items-center justify-center gap-2 disabled:opacity-50">
                       {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"/> : <Check className="w-5 h-5"/>}
                       {isRTL?'تأكيد الدفع وإتمام الطلب':'Confirm Payment & Place Order'}
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {/* Card payment */}
-              {(selectedMethod==='mastercard'||selectedMethod==='qi_card') && (
-                <div className="card p-6">
-                  <div className={`flex items-center gap-3 mb-5 ${isRTL?'flex-row-reverse':''}`}>
-                    <span className="text-3xl">{method?.icon}</span>
-                    <h3 className="font-display text-xl font-black">
-                      {isRTL ? (selectedMethod==='mastercard'?'بيانات البطاقة':'بيانات كي كارد') : (selectedMethod==='mastercard'?'Card Details':'Qi Card Details')}
-                    </h3>
-                  </div>
-                  <form onSubmit={handleConfirm} className="space-y-4">
-                    {[
-                      { key:'name', label:isRTL?'اسم حامل البطاقة':'Cardholder Name', ph:isRTL?'الاسم على البطاقة':'Name on card', type:'text', len:null },
-                      { key:'number', label:isRTL?'رقم البطاقة':'Card Number', ph:'1234 5678 9012 3456', type:'text', len:19 },
-                      { key:'expiry', label:isRTL?'تاريخ الانتهاء':'Expiry', ph:'MM/YY', type:'text', len:5 },
-                      { key:'cvv',    label:'CVV', ph:'•••', type:'password', len:4 },
-                    ].map(f=>(
-                      <div key={f.key}>
-                        <label className="block text-sm font-black text-gray-800 mb-1.5">{f.label}</label>
-                        <input type={f.type} placeholder={f.ph} maxLength={f.len}
-                          value={cardFields[f.key]||''} onChange={e=>setCardFields(c=>({...c,[f.key]:e.target.value}))}
-                          className="input" dir="ltr" required/>
-                      </div>
-                    ))}
-                    <button type="submit" disabled={loading||countdown===0}
-                      className="btn-primary w-full py-4 flex items-center justify-center gap-2 mt-2 disabled:opacity-50">
-                      {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"/> : <Lock className="w-4 h-4"/>}
-                      {isRTL?`ادفعي ${total.toLocaleString()} دينار`:`Pay ${total.toLocaleString()} IQD`}
                     </button>
                   </form>
                 </div>

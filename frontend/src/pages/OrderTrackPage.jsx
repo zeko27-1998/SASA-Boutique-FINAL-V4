@@ -65,10 +65,8 @@ export default function OrderTrackPage() {
   const isCancelled = order?.status === 'cancelled';
 
   const PAY_METHOD_LABELS = {
-    mastercard: isRTL ? 'ماستركارد' : 'Mastercard',
-    qi_card:    isRTL ? 'كي كارد' : 'Qi Card',
-    zain_cash:  isRTL ? 'زين كاش' : 'Zain Cash',
-    delivery:   isRTL ? 'دفع عند الاستلام' : 'Cash on Delivery',
+    qi_card:   isRTL ? 'كي كارد' : 'Qi Card',
+    delivery:  isRTL ? 'دفع عند الاستلام' : 'Cash on Delivery',
   };
 
   return (
