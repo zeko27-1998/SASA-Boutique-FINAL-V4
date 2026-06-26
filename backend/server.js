@@ -8,6 +8,7 @@ const path     = require('path');
 const fs       = require('fs');
 
 const app        = express();
+app.set('trust proxy', true);
 const PORT       = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'sasa_boutique_secret_2024';
 
@@ -69,9 +70,19 @@ let db = {
   pendingPayments: {},   // orderId -> { order, expiresAt }
 };
 
+const PUBLIC_URL = process.env.PUBLIC_URL || '';
+
+const resolveImage = (image, req) => {
+  if (!image) return null;
+  if (image.startsWith('http')) return image;
+  const proto = (req?.headers['x-forwarded-proto'] || req?.protocol || 'http').split(',')[0].trim();
+  const host  = req?.headers['x-forwarded-host']  || req?.get('host');
+  return `${proto}://${host}${image}`;
+};
+
 /* ══════════════════════════════════════════════════
    AUTH MIDDLEWARE
-══════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════ */
 const auth = (req,res,next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error:'No token' });
@@ -177,13 +188,13 @@ app.get('/api/products', (req,res) => {
   if (sort==='price_asc')  products.sort((a,b)=>a.price-b.price);
   else if (sort==='price_desc') products.sort((a,b)=>b.price-a.price);
   else if (sort==='newest') products.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
-  res.json(products);
+  res.json(products.map(p => ({ ...p, image: resolveImage(p.image, req) })));
 });
 
 app.get('/api/products/:id', (req,res) => {
   const p = db.products.find(p=>p.id===req.params.id);
   if (!p) return res.status(404).json({ error:'Not found' });
-  res.json(p);
+  res.json({ ...p, image: resolveImage(p.image, req) });
 });
 
 app.post('/api/products', auth, adminOnly, upload.single('image'), (req,res) => {
@@ -199,7 +210,7 @@ app.post('/api/products', auth, adminOnly, upload.single('image'), (req,res) => 
     createdAt:new Date().toISOString()
   };
   db.products.push(product);
-  res.status(201).json(product);
+  res.status(201).json({ ...product, image: resolveImage(product.image, req) });
 });
 
 app.put('/api/products/:id', auth, adminOnly, upload.single('image'), (req,res) => {
@@ -219,7 +230,7 @@ app.put('/api/products/:id', auth, adminOnly, upload.single('image'), (req,res) 
     featured: featured==='true',
     ...(req.file&&{image:`/uploads/${req.file.filename}`}),
   };
-  res.json(db.products[idx]);
+  res.json({ ...db.products[idx], image: resolveImage(db.products[idx].image, req) });
 });
 
 app.delete('/api/products/:id', auth, adminOnly, (req,res) => {
