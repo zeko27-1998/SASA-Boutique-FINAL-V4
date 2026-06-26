@@ -16,7 +16,8 @@ app.use(cors({
   origin: (origin, cb) => {
     const allowed = [
       'http://localhost:3000','http://localhost:5173',
-      /\.vercel\.app$/,/\.onrender\.com$/
+      'https://sasa-boutique.netlify.app',
+      /\.vercel\.app$/,/\.onrender\.com$/,/\.railway\.app$/,/sasa-boutique\.netlify\.app$/
     ];
     if (!origin) return cb(null, true);
     cb(allowed.some(a => typeof a==='string'?a===origin:a.test(origin))?null:new Error('CORS'),true);

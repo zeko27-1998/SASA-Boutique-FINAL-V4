@@ -3,6 +3,9 @@
   command = "npm run build"
   publish = "dist"
 
+[build.environment]
+  VITE_API_URL = "https://sasa-boutique-final-v4-production.up.railway.app/api"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
