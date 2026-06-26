@@ -70,6 +70,11 @@ export default function CategoryPage() {
   };
   const bannerCls = BANNER_CLASSES[cat] || 'bg-gradient-to-r from-pink-100 to-sky-100';
 
+  const typeLabel = (tp) => {
+    const key = `type_${tp.toLowerCase().replace(/[\s-]/g, '_')}`;
+    return isRTL ? t(key) : tp;
+  };
+
   const FilterPanel = () => (
     <div className="space-y-5">
       <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
@@ -91,7 +96,7 @@ export default function CategoryPage() {
               <button key={tp}
                 onClick={() => setFilters(f => ({ ...f, type: f.type === tp ? '' : tp }))}
                 className={`btn-outline text-xs ${filters.type === tp ? 'border-pink-400 text-pink-600 bg-pink-50' : ''}`}>
-                {tp}
+                {typeLabel(tp)}
               </button>
             ))}
           </div>

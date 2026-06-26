@@ -287,7 +287,7 @@ function CategoryModal({ cat, onClose, onSave }) {
           <div>
             <label className="block text-sm font-black text-gray-800 mb-1.5">{isRTL?'الأنواع (مفصولة بفاصلة)':'Types (comma-separated)'}</label>
             <input className="input" value={form.types} onChange={e=>set('types',e.target.value)} placeholder="Dress, Blouse, Skirt" dir="ltr"/>
-            <p className="text-xs text-gray-400 font-semibold mt-1">{isRTL?'الأنواع تظهر كفلاتر في صفحة القسم':'These appear as filters in the category page'}</p>
+            <p className="text-xs text-gray-400 font-semibold mt-1">{isRTL?'الأنواع تظهر كفلاتر في صفحة القسم':'These types appear as filters in the category page'}</p>
           </div>
 
           <div>
